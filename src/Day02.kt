@@ -1,54 +1,48 @@
 import java.io.File;
 
-data class Pick(val red: Int, val green: Int, val blue: Int) {
+data class CubeSet(val cubes: Map<String, Int>) {
     companion object {
-        fun fromString(input: String): Pick {
-            val picks = input
+        fun fromString(input: String): CubeSet =
+            CubeSet(input
                 .split(", ")
                 .map { it.split(" ") }
                 .map { it[1] to it[0].toInt() }
-                .toMap()
-            return Pick(
-                picks.get("red") ?: 0,
-                picks.get("green") ?: 0,
-                picks.get("blue") ?: 0)
-        }
+                .toMap())
     }
+
+    fun subset(arg: CubeSet): Boolean =
+        arg.cubes.all { cubes[it.key] ?: 0 >= it.value }
+
+    fun minWith(rhs: CubeSet): CubeSet =
+        CubeSet(cubes.keys.union(rhs.cubes.keys)
+                .map { it to maxOf(cubes.getOrDefault(it, 0), rhs.cubes.getOrDefault(it, 0)) }.toMap())
 }
-fun String.toPicks(): List<Pick> =
-    split("; ")
-        .map { Pick.fromString(it) }
-data class Game(val id: Int, val picks: List<Pick>) {
+data class Game(val id: Int, val sets: List<CubeSet>) {
     companion object {
         fun fromString(input: String): Game {
             val match = Regex("""Game (\d+): (.*)""").matchEntire(input)!!
             val id = match.groups[1]!!.value.toInt()
-            return Game(id, match.groups[2]!!.value.toPicks())
+            return Game(id, match.groups[2]!!.value.split("; ").map(CubeSet::fromString))
         }
     }
 
-    fun minBag(): Pick =
-        picks.reduce { acc, p -> Pick(maxOf(acc.red, p.red), maxOf(acc.green, p.green), maxOf(acc.blue, p.blue)) }
-}
-data class Claim(val red: Int, val green: Int, val blue: Int) {
-    fun valid(pick: Pick): Boolean {
-        return pick.red <= red && pick.green <= green && pick.blue <= blue
-    }
+    fun minBag(): CubeSet =
+        sets.reduce { acc, p -> acc.minWith(p) }
 }
 
 fun main() {
     fun part1(input: List<String>): Int {
-        val claim = Claim(12, 13, 14)
+        val claim = CubeSet.fromString("12 red, 13 green, 14 blue")
         return input
             .map { Game.fromString(it) }
-            .filter { it.picks.all { claim.valid(it) } }
+            .filter { it.sets.all { claim.subset(it) } }
             .sumOf { it.id }
     }
 
     fun part2(input: List<String>): Int {
         return input
             .map { Game.fromString(it).minBag() }
-            .map { it.red * it.green * it.blue }
+            .map { it.cubes.values.reduce { acc, c -> acc * c } }
             .sum()
     }
 
