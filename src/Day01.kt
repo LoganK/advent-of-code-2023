@@ -35,28 +35,23 @@ fun main() {
             "nine" to 9,
         )
 
-        var first: Int = 0
-        loop@ for (i in 0..input.length - 1) {
-            val sub = input.substring(i)
-            for (entry in mapping) {
-                if (sub.startsWith(entry.key)) {
-                    first = entry.value
-                    break@loop
-                }
-            }
-        }
+        val first: Int = mapping
+            .map { entry -> input
+                    .windowed(entry.key.length)
+                    .withIndex()
+                    .firstOrNull { it.value == entry.key }
+                    .let { Pair(it?.index ?: input.length, entry) } }
+            .minBy { it.first}
+            .second.value
 
-        var last: Int = 0
-        loop@ for (i in input.length - 1 downTo 0) {
-            val sub = input.substring(i)
-            for (entry in mapping) {
-                if (sub.startsWith(entry.key)) {
-                    last = entry.value
-                    break@loop
-                }
-            }
-        }
-
+        val last: Int = mapping
+            .map { entry -> input
+                    .windowed(entry.key.length)
+                    .withIndex()
+                    .lastOrNull { it.value == entry.key }
+                    .let { Pair(it?.index ?: -1, entry) } }
+            .maxBy { it.first}
+            .second.value
 
         return Pair(first, last)
     }
