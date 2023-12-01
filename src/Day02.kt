@@ -10,10 +10,10 @@ data class CubeSet(val cubes: Map<String, Int>) {
                 .toMap())
     }
 
-    fun subset(arg: CubeSet): Boolean =
+    fun isSubset(arg: CubeSet): Boolean =
         arg.cubes.all { cubes[it.key] ?: 0 >= it.value }
 
-    fun minWith(rhs: CubeSet): CubeSet =
+    fun minBag(rhs: CubeSet): CubeSet =
         CubeSet(cubes.keys.union(rhs.cubes.keys)
                 .map { it to maxOf(cubes.getOrDefault(it, 0), rhs.cubes.getOrDefault(it, 0)) }.toMap())
 }
@@ -27,7 +27,7 @@ data class Game(val id: Int, val sets: List<CubeSet>) {
     }
 
     fun minBag(): CubeSet =
-        sets.reduce { acc, p -> acc.minWith(p) }
+        sets.reduce { acc, p -> acc.minBag(p) }
 }
 
 fun main() {
@@ -35,7 +35,7 @@ fun main() {
         val claim = CubeSet.fromString("12 red, 13 green, 14 blue")
         return input
             .map { Game.fromString(it) }
-            .filter { it.sets.all { claim.subset(it) } }
+            .filter { it.sets.all { claim.isSubset(it) } }
             .sumOf { it.id }
     }
 
