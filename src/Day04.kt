@@ -1,25 +1,24 @@
 import java.io.File
 
-data class Card(val num: Int, val wins: Set<Int>, val picks: Set<Int>) {
+data class Card(val num: Int, val winNums: Set<Int>, val pickNums: Set<Int>) {
   companion object {
-    fun fromString(input: String): Card {
-      val first = input.split(':')
-      val second = first[1].split('|')
+    private val cardPatt = Regex("""Card\s+(\d+):\s+([^|]+)\s+\|\s+(.*)""")
 
-      val num = first[0].substring(5).trim().toInt()
-      val wins = second[0].split(' ').filter { it != "" }.map { it.toInt() }.toSet()
-      val picks = second[1].split(' ').filter { it != "" }.map { it.toInt() }.toSet()
+    fun fromString(input: String): Card {
+      val (numStr, winStr, pickStr) = cardPatt.matchEntire(input)!!.destructured
+      val num = numStr.toInt()
+      val wins = winStr.split(' ').filter(String::isNotBlank).map(String::toInt).toSet()
+      val picks = pickStr.split(' ').filter(String::isNotBlank).map(String::toInt).toSet()
 
       return Card(num, wins, picks)
     }
   }
 
-  fun wins(): Int = wins.intersect(picks).size
+  val wins: Int
+    get() { return winNums.intersect(pickNums).size }
 
-  fun score(): Int {
-    val winCount = wins()
-    return if (winCount > 0) 1.shl(winCount - 1) else 0
-  }
+  val score: Int
+    get() { return if (wins > 0) 1.shl(wins - 1) else 0 }
 }
 
 fun main() {
@@ -27,10 +26,7 @@ fun main() {
 
   fun part2(cards: List<Card>): Int {
     val cardCount = MutableList<Int>(cards.size) { 1 }
-    cards.forEachIndexed { i, card ->
-      val wins = card.wins()
-      (i + 1..i + wins).forEach { cardCount[it] += cardCount[i] }
-    }
+    cards.forEachIndexed { i, card -> (i + 1..i + card.wins).forEach { cardCount[it] += cardCount[i] } }
     return cardCount.sum()
   }
 
