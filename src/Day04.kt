@@ -1,36 +1,35 @@
 import java.io.File
 
 data class Card(val num: Int, val wins: Set<Int>, val picks: Set<Int>) {
-    companion object {
-        fun fromString(input: String): Card {
-            val first = input.split(':')
-            val second = first[1].split('|')
+  companion object {
+    fun fromString(input: String): Card {
+      val first = input.split(':')
+      val second = first[1].split('|')
 
-            val num = first[0].substring(5).trim().toInt()
-            val wins = second[0].split(' ').filter { it != "" }.map { it.toInt() }.toSet()
-            val picks = second[1].split(' ').filter { it != "" }.map { it.toInt() }.toSet()
+      val num = first[0].substring(5).trim().toInt()
+      val wins = second[0].split(' ').filter { it != "" }.map { it.toInt() }.toSet()
+      val picks = second[1].split(' ').filter { it != "" }.map { it.toInt() }.toSet()
 
-            return Card(num, wins, picks)
-        }
+      return Card(num, wins, picks)
     }
+  }
 
-    fun wins(): Int =
-        wins.intersect(picks).size
-    fun score(): Int {
-        val winCount = wins()
-        return if (winCount > 0) 1.shl(winCount - 1) else 0
-    }
+  fun wins(): Int = wins.intersect(picks).size
+
+  fun score(): Int {
+    val winCount = wins()
+    return if (winCount > 0) 1.shl(winCount - 1) else 0
+  }
 }
 
 fun main() {
-  fun part1(cards: List<Card>): Int =
-    cards.map(Card::score).sum()
+  fun part1(cards: List<Card>): Int = cards.map(Card::score).sum()
 
   fun part2(cards: List<Card>): Int {
     val cardCount = MutableList<Int>(cards.size) { 1 }
     cards.forEachIndexed { i, card ->
-        val wins = card.wins()
-        (i+1..i+wins).forEach { cardCount[it] += cardCount[i] }
+      val wins = card.wins()
+      (i + 1..i + wins).forEach { cardCount[it] += cardCount[i] }
     }
     return cardCount.sum()
   }
