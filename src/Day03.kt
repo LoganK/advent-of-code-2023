@@ -13,28 +13,23 @@ data class Sym(val loc: Point, val c: Char) {
 
 data class Board(val nums: List<Num>, val syms: List<Sym>) {
   companion object {
+    private val linePatt = Regex("""(?<num>\d+)|(?<sym>[^\d.])""")
+
     fun fromString(lines: Collection<String>): Board {
       val nums = mutableListOf<Num>()
       val syms = mutableListOf<Sym>()
       for ((y, line) in lines.withIndex()) {
-        var start: Point? = null
-        for ((x, c) in line.withIndex()) {
-          if (c.isDigit()) {
-            start = start ?: Point(x, y)
-          } else {
-            if (start != null) {
-              val end = Point(x - 1, y)
-              nums.add(Num(start, end, line.substring(start.x, x).toInt()))
-              start = null
-            }
-            if (c != '.') {
-              syms.add(Sym(Point(x, y), c))
-            }
+        for (mg in linePatt.findAll(line)) {
+          val start = Point(mg.range.start, y)
+          val end = Point(mg.range.endInclusive, y)
+          when (val numStr = mg.groups.get("num")?.value) {
+            null -> {}
+            else -> nums.add(Num(start, end, numStr.toInt()))
           }
-        }
-        if (start != null) {
-          val end = Point(line.length - 1, y)
-          nums.add(Num(start, end, line.substring(start.x).toInt()))
+          when (val symStr = mg.groups.get("sym")?.value) {
+            null -> {}
+            else -> syms.add(Sym(start, symStr[0]))
+          }
         }
       }
       return Board(nums, syms)
