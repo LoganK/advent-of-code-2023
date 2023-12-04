@@ -19,17 +19,11 @@ data class Board(val nums: List<Num>, val syms: List<Sym>) {
       val nums = mutableListOf<Num>()
       val syms = mutableListOf<Sym>()
       for ((y, line) in lines.withIndex()) {
-        for (mg in linePatt.findAll(line)) {
+        linePatt.findAll(line).forEach { mg ->
           val start = Point(mg.range.start, y)
           val end = Point(mg.range.endInclusive, y)
-          when (val numStr = mg.groups.get("num")?.value) {
-            null -> {}
-            else -> nums.add(Num(start, end, numStr.toInt()))
-          }
-          when (val symStr = mg.groups.get("sym")?.value) {
-            null -> {}
-            else -> syms.add(Sym(start, symStr[0]))
-          }
+          mg.groups.get("num")?.value?.run { nums.add(Num(start, end, this.toInt())) }
+          mg.groups.get("sym")?.value?.run { syms.add(Sym(start, this[0])) }
         }
       }
       return Board(nums, syms)
