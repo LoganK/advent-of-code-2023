@@ -4,7 +4,10 @@ import kotlin.math.min
 
 data class ShiftedRange(val range: ULongRange, val base: ULong) {
   // Assumes a valid mapping.
-  fun mapULong(num: ULong): ULong = base - range.start + num
+  fun mapULong(num: ULong): ULong {
+    assert(num in range)
+    base - range.start + num
+  }
 
   // Only returns the overlapping range.
   fun mapRange(newRange: ULongRange): ULongRange =

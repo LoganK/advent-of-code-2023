@@ -1,11 +1,14 @@
 import java.io.File
+import kotlin.math.abs
+import kotlin.math.ceil
+import kotlin.math.floor
+import kotlin.math.sqrt
 
-data class Race(val time: ULong, val record: ULong) {
+data class Race(val time: Long, val record: Long) {
   companion object {
     fun fromStrings(input: List<String>): List<Race> {
-      val times = input[0].split(':')[1].split(' ').filter(String::isNotBlank).map(String::toULong)
-      val records =
-          input[1].split(':')[1].split(' ').filter(String::isNotBlank).map(String::toULong)
+      val times = input[0].split(':')[1].split(' ').filter(String::isNotBlank).map(String::toLong)
+      val records = input[1].split(':')[1].split(' ').filter(String::isNotBlank).map(String::toLong)
       return times.zip(records).map { Race(it.first, it.second) }
     }
 
@@ -16,25 +19,36 @@ data class Race(val time: ULong, val record: ULong) {
               .split(' ')
               .filter(String::isNotBlank)
               .joinToString(separator = "")
-              .toULong()
+              .toLong()
       val record =
           input[1]
               .split(':')[1]
               .split(' ')
               .filter(String::isNotBlank)
               .joinToString(separator = "")
-              .toULong()
+              .toLong()
       return listOf(Race(time, record))
+    }
+
+    private fun quadratic(a: Long, b: Long, c: Long): Pair<Long, Long> {
+      val p1 = (b * b - 4 * a * c).toDouble()
+      return Pair(
+          ceil((-b.toDouble() - sqrt(p1)) / (2 * a)).toLong(),
+          floor((-b.toDouble() + sqrt(p1)) / (2 * a)).toLong())
     }
   }
 
-  fun winCount(): Int = (1uL..time - 1u).filter { it * (time - it) > record }.count()
+  fun winCount(): Long {
+    // record = x * (time - x)
+    val zeros = quadratic(-1, time, -record)
+    return abs(zeros.second - zeros.first + 1)
+  }
 }
 
 fun main() {
-  fun part1(races: List<Race>): Int = races.map(Race::winCount).reduce { acc, f -> acc * f }
+  fun part1(races: List<Race>): Long = races.map(Race::winCount).reduce { acc, f -> acc * f }
 
-  fun part2(races: List<Race>): Int = races.map(Race::winCount).reduce { acc, f -> acc * f }
+  fun part2(races: List<Race>): Long = races.map(Race::winCount).reduce { acc, f -> acc * f }
 
   val testStr =
       """
