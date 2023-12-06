@@ -2,65 +2,65 @@ import java.io.File
 import kotlin.math.max
 import kotlin.math.min
 
-data class ShiftedRange(val range: ULongRange, val base: ULong) {
+data class ShiftedRange(val range: LongRange, val offset: Long) {
   // Assumes a valid mapping.
-  fun mapULong(num: ULong): ULong {
+  fun mapLong(num: Long): Long {
     assert(num in range)
-    base - range.start + num
+    return num + offset
   }
 
   // Only returns the overlapping range.
-  fun mapRange(newRange: ULongRange): ULongRange =
-      ULongRange(
-          base - range.start + max(range.start, newRange.start),
-          base - range.start + min(range.endInclusive, newRange.endInclusive))
+  fun mapRange(newRange: LongRange): LongRange =
+      LongRange(
+          max(range.start, newRange.start) + offset,
+          min(range.endInclusive, newRange.endInclusive) + offset)
 
-  fun overlaps(rhs: ULongRange): Boolean =
+  fun overlaps(rhs: LongRange): Boolean =
       rhs.start in range ||
           rhs.endInclusive in range ||
           (range.start >= rhs.start && range.endInclusive <= rhs.endInclusive)
 }
 
 class Entry() {
-  var mapping = arrayListOf(ShiftedRange(ULongRange(0u, ULong.MAX_VALUE), 0u))
+  var mapping = arrayListOf(ShiftedRange(LongRange(0, Long.MAX_VALUE), 0))
 
   fun extend(input: String) {
-    val (dst, src, length) = input.split(' ').map(String::toULong)
-    val srcRange = ULongRange(src, src + length - 1u)
+    val (dst, src, length) = input.split(' ').map(String::toLong)
+    val newRange = LongRange(src, src + length - 1)
+    val newOffset = dst - src
 
-    val i = mapping.indexOfFirst { it.range.endInclusive > srcRange.start }
+    val i = mapping.indexOfFirst { it.range.endInclusive > newRange.start }
     assert(i >= 0)
     val oldRange = mapping[i]
-    if (oldRange.range.endInclusive == srcRange.endInclusive) {
-      mapping[i] = ShiftedRange(srcRange, dst)
+    if (oldRange.range.endInclusive == newRange.endInclusive) {
+      mapping[i] = ShiftedRange(newRange, newOffset)
     } else {
       mapping[i] =
           ShiftedRange(
-              ULongRange(srcRange.endInclusive + 1u, oldRange.range.endInclusive),
-              oldRange.base + srcRange.endInclusive + 1u - oldRange.range.start)
-      mapping.add(i, ShiftedRange(srcRange, dst))
+              LongRange(newRange.endInclusive + 1, oldRange.range.endInclusive), oldRange.offset)
+      mapping.add(i, ShiftedRange(newRange, newOffset))
     }
-    if (oldRange.range.start < srcRange.start) {
+    if (oldRange.range.start < newRange.start) {
       mapping.add(
-          i, ShiftedRange(ULongRange(oldRange.range.start, srcRange.start - 1u), oldRange.base))
+          i, ShiftedRange(LongRange(oldRange.range.start, newRange.start - 1), oldRange.offset))
     }
   }
 
-  fun lookup(num: ULong): ULong = mapping.first { num in it.range }.let { it.mapULong(num) }
+  fun lookup(num: Long): Long = mapping.first { num in it.range }.let { it.mapLong(num) }
 
-  fun lookup(num: List<ULongRange>): List<ULongRange> =
+  fun lookup(num: List<LongRange>): List<LongRange> =
       num.flatMap { n -> mapping.filter { it.overlaps(n) }.map { it.mapRange(n) } }
 }
 
-data class Almanac(val seeds: List<ULongRange>, val maps: Map<Pair<String, String>, Entry>) {
+data class Almanac(val seeds: List<LongRange>, val maps: Map<Pair<String, String>, Entry>) {
   companion object {
     private val mapPatt = Regex("""([^-]+)-to-([^ ]+) map:""")
 
     fun fromStringP1(input: List<String>): Almanac {
       assert(input[0].startsWith("seeds: "))
       val seeds =
-          input[0].substring("seeds: ".length).split(' ').map(String::toULong).map {
-            ULongRange(it, it)
+          input[0].substring("seeds: ".length).split(' ').map(String::toLong).map {
+            LongRange(it, it)
           }
 
       return Almanac(seeds, parseMaps(input.drop(1)))
@@ -68,10 +68,8 @@ data class Almanac(val seeds: List<ULongRange>, val maps: Map<Pair<String, Strin
 
     fun fromStringP2(input: List<String>): Almanac {
       assert(input[0].startsWith("seeds: "))
-      val seeds = input[0].substring("seeds: ".length).split(' ').map(String::toULong)
-      val sStart = seeds.filterIndexed { i, _ -> i % 2 == 0 }
-      val sLength = seeds.filterIndexed { i, _ -> i % 2 == 1 }
-      val seedRanges = sStart.zip(sLength).map { ULongRange(it.first, it.first + it.second - 1u) }
+      val seeds = input[0].substring("seeds: ".length).split(' ').map(String::toLong)
+      val seedRanges = seeds.chunked(2).map { LongRange(it[0], it[0] + it[1] - 1) }
 
       return Almanac(seedRanges, parseMaps(input.drop(1)))
     }
@@ -103,9 +101,9 @@ data class Almanac(val seeds: List<ULongRange>, val maps: Map<Pair<String, Strin
 }
 
 fun main() {
-  fun part1(a: Almanac): ULong =
+  fun part1(a: Almanac): Long =
       a.seeds
-          .map(ULongRange::start)
+          .map(LongRange::start)
           .map { a.maps[Pair("seed", "soil")]!!.lookup(it) }
           .map { a.maps[Pair("soil", "fertilizer")]!!.lookup(it) }
           .map { a.maps[Pair("fertilizer", "water")]!!.lookup(it) }
@@ -115,7 +113,7 @@ fun main() {
           .map { a.maps[Pair("humidity", "location")]!!.lookup(it) }
           .min()
 
-  fun part2(a: Almanac): ULong =
+  fun part2(a: Almanac): Long =
       a.maps[Pair("seed", "soil")]!!
           .lookup(a.seeds)
           .let { a.maps[Pair("soil", "fertilizer")]!!.lookup(it) }
