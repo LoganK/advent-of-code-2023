@@ -1,5 +1,4 @@
 import java.io.File
-import java.math.BigInteger
 
 data class Hand(val cards: List<Char>, val jokers: Boolean = false) : Comparable<Hand> {
   companion object {
@@ -21,79 +20,89 @@ data class Hand(val cards: List<Char>, val jokers: Boolean = false) : Comparable
     val fh = max == 3 && 2 in m.values
     val tp = max == 2 && m.values.filter { it == 2 }.count() == 2
     return when (max) {
-      1 -> 1
-      2 -> if (tp) 3 else 2
-      3 -> if (fh) 5 else 4
-      4 -> 6
-      5 -> 7
-      else -> 10
+      1 -> 10
+      2 -> if (tp) 25 else 20
+      3 -> if (fh) 35 else 30
+      4 -> 40
+      5 -> 50
+      else -> throw IllegalArgumentException("Invalid: ${cards}")
     }
   }
 
   fun rank2(): Int {
     val m = mutableMapOf<Char, Int>()
-    for (c in cards) {
-      if (c != 'J') {
-        m[c] = m.getOrDefault(c, 0) + 1
-      }
+    for (c in cards.filter { it != 'J' }) {
+      m[c] = m.getOrDefault(c, 0) + 1
     }
 
-    val max = if (m.values.size == 0) 0 else m.values.max()
+    // 10 - High card
+    // 20 - Pair
+    // 25 - Two pair
+    // 30 - Three of a kind
+    // 35 - Full house
+    // 40 - Four of a kind
+    // 50 - Five of a kind
+    val max = m.values.maxOrNull() ?: 0
     val jokers = cards.filter { it == 'J' }.count()
     val fh = max == 3 && 2 in m.values
     val tp = max == 2 && m.values.filter { it == 2 }.count() == 2
     return when (max) {
-      0 -> 7
+      0 -> 50 // All Jokers
       1 ->
           when (jokers) {
-            0 -> 1
-            1 -> 2
-            2 -> 4
-            3 -> 6
-            4 -> 7
+            0 -> 10
+            1 -> 20
+            2 -> 30
+            3 -> 40
+            4 -> 50
             else -> throw IllegalArgumentException("Invalid: ${cards}")
           }
       2 ->
           if (tp) {
-            if (jokers > 0) 5 else 3
+            if (jokers > 0) 35 else 25
           } else {
             when (jokers) {
-              0 -> 2
-              1 -> 4
-              2 -> 6
-              3 -> 7
+              0 -> 20
+              1 -> 30
+              2 -> 40
+              3 -> 50
               else -> throw IllegalArgumentException("Invalid: ${cards}")
             }
           }
       3 ->
-          if (fh) {
-            5
-          } else {
-            when (jokers) {
-              0 -> 4
-              1 -> 6
-              2 -> 7
-              else -> throw IllegalArgumentException("Invalid: ${cards}")
-            }
+          when (jokers) {
+            0 -> if (fh) 35 else 30
+            1 -> 40
+            2 -> 50
+            else -> throw IllegalArgumentException("Invalid: ${cards}")
           }
-      4 -> if (jokers > 0) 7 else 6
-      5 -> 7
+      4 ->
+          when (jokers) {
+            0 -> 40
+            1 -> 50
+            else -> throw IllegalArgumentException("Invalid: ${cards}")
+          }
+      5 -> 50
       else -> throw IllegalArgumentException("Invalid: ${cards}")
     }
   }
 
+  fun compareTo2(other: Hand): Int {
+    val diff = this.rank2() - other.rank2()
+    if (diff != 0) {
+      return diff
+    }
+    for (i in (0 ..< cards.size)) {
+      if (cards[i] != other.cards[i]) {
+        return rankMap2.indexOf(cards[i]) - rankMap2.indexOf(other.cards[i])
+      }
+    }
+    return 0
+  }
+
   override fun compareTo(other: Hand): Int {
     if (jokers) {
-      val diff = this.rank2() - other.rank2()
-      if (diff != 0) {
-        return diff
-      }
-      for (i in (0 ..< cards.size)) {
-        if (cards[i] != other.cards[i]) {
-          return rankMap2.indexOf(cards[i]) - rankMap2.indexOf(other.cards[i])
-        }
-      }
-      return 0
+      return compareTo2(other)
     }
 
     val diff = this.rank() - other.rank()
@@ -123,17 +132,14 @@ data class Bid(val hand: Hand, val bid: ULong) : Comparable<Bid> {
 }
 
 fun main() {
-  fun part1(cards: List<Bid>): BigInteger =
-      cards
-          .sorted()
-          .mapIndexed { i, b -> ((i + 1).toULong() * b.bid).toLong().toBigInteger() }
-          .reduce { acc, i -> acc + i }
+  fun part1(cards: List<Bid>): ULong =
+      cards.sorted().mapIndexed { i, b -> (i + 1).toULong() * b.bid }.reduce { acc, i -> acc + i }
 
-  fun part2(cards: List<Bid>): BigInteger =
+  fun part2(cards: List<Bid>): ULong =
       cards
           .map { Bid(it.hand.copy(jokers = true), it.bid) }
           .sorted()
-          .mapIndexed { i, b -> ((i + 1).toULong() * b.bid).toLong().toBigInteger() }
+          .mapIndexed { i, b -> (i + 1).toULong() * b.bid }
           .reduce { acc, i -> acc + i }
 
   val testStr =
