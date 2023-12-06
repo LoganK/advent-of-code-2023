@@ -11,18 +11,19 @@ data class Hand(val cards: List<Char>, val jokers: Boolean = false) : Comparable
   }
 
   fun rank(): Int {
-    val m = mutableMapOf<Char, Int>()
-    for (c in cards) {
-      m[c] = m.getOrDefault(c, 0) + 1
-    }
-
+    // 10 - High card
+    // 20 - Pair
+    // 25 - Two pair
+    // 30 - Three of a kind
+    // 35 - Full house
+    // 40 - Four of a kind
+    // 50 - Five of a kind
+    val m = cards.groupingBy { it }.eachCount()
     val max = m.values.max()
-    val fh = max == 3 && 2 in m.values
-    val tp = max == 2 && m.values.filter { it == 2 }.count() == 2
     return when (max) {
       1 -> 10
-      2 -> if (tp) 25 else 20
-      3 -> if (fh) 35 else 30
+      2 -> if (m.values.filter { it == 2 }.count() == 2) 25 else 20
+      3 -> if (2 in m.values) 35 else 30
       4 -> 40
       5 -> 50
       else -> throw IllegalArgumentException("Invalid: ${cards}")
@@ -30,10 +31,7 @@ data class Hand(val cards: List<Char>, val jokers: Boolean = false) : Comparable
   }
 
   fun rank2(): Int {
-    val m = mutableMapOf<Char, Int>()
-    for (c in cards.filter { it != 'J' }) {
-      m[c] = m.getOrDefault(c, 0) + 1
-    }
+    val m = cards.filter { it != 'J' }.groupingBy { it }.eachCount()
 
     // 10 - High card
     // 20 - Pair
@@ -44,8 +42,6 @@ data class Hand(val cards: List<Char>, val jokers: Boolean = false) : Comparable
     // 50 - Five of a kind
     val max = m.values.maxOrNull() ?: 0
     val jokers = cards.filter { it == 'J' }.count()
-    val fh = max == 3 && 2 in m.values
-    val tp = max == 2 && m.values.filter { it == 2 }.count() == 2
     return when (max) {
       0 -> 50 // All Jokers
       1 ->
@@ -58,7 +54,7 @@ data class Hand(val cards: List<Char>, val jokers: Boolean = false) : Comparable
             else -> throw IllegalArgumentException("Invalid: ${cards}")
           }
       2 ->
-          if (tp) {
+          if (m.values.filter { it == 2 }.count() == 2) {
             if (jokers > 0) 35 else 25
           } else {
             when (jokers) {
@@ -71,7 +67,7 @@ data class Hand(val cards: List<Char>, val jokers: Boolean = false) : Comparable
           }
       3 ->
           when (jokers) {
-            0 -> if (fh) 35 else 30
+            0 -> if (2 in m.values) 35 else 30
             1 -> 40
             2 -> 50
             else -> throw IllegalArgumentException("Invalid: ${cards}")
