@@ -2,6 +2,8 @@ import java.io.File
 
 data class Point(val x: Int, val y: Int)
 
+data class AdjacentPoint(val parent: AdjacentPoint?, val p: Point)
+
 data class Graph(val pipes: List<List<Char>>) {
   companion object {
     fun fromString(input: List<String>): Graph {
@@ -9,30 +11,50 @@ data class Graph(val pipes: List<List<Char>>) {
     }
   }
 
-  fun findLongest(): Long {
+  fun findLongest(): Long = findLongestPath().first
+
+  fun findLongestPath(): Pair<Long, List<Point>> {
     val visited = mutableSetOf<Point>()
-    var visit = findConnecting(findStart())
-    var loopDistances = mutableListOf<Long>()
+    var visit = findConnecting(AdjacentPoint(null, findStart()))
+    var biggestLoop: Pair<Long, Pair<AdjacentPoint, AdjacentPoint>>? = null
 
     var distance = 1L
     while (visit.size > 0) {
-      val adjacent = mutableListOf<Point>()
+      val adjacent = mutableListOf<AdjacentPoint>()
       for (p in visit) {
-        visited.add(p)
-        val connecting = findConnecting(p)
-        val newConnecting = connecting - visited
-        if (adjacent.intersect(newConnecting).any()) {
-          // We've seen this point twice so we have a loop.
-          loopDistances.add(distance + 1)
+        visited.add(p.p)
+        val newConnected = findConnecting(p).filter { !visited.contains(it.p) }
+        for (new in newConnected) {
+          // It's a loop if we reach the same point from two different directions.
+          // The latest one must be the largest loop because distance only increases.
+          when (val existing = adjacent.firstOrNull { it.p == new.p }) {
+            null -> adjacent.add(new)
+            else -> {
+              biggestLoop = Pair(distance + 1, Pair(existing, new))
+            }
+          }
         }
-        adjacent.addAll(newConnecting)
       }
 
       distance++
       visit = adjacent
     }
 
-    return loopDistances.max()
+    val path = mutableListOf<Point>()
+    var mp: AdjacentPoint? = biggestLoop?.second?.first
+    // Build in reverse: midpoint -> start
+    while (mp != null) {
+      path.add(0, mp.p)
+      mp = mp.parent
+    }
+    mp = biggestLoop?.second?.second?.parent
+    while (mp != null) {
+      if (mp.parent != null) {
+        path.add(mp.p)
+      }
+      mp = mp.parent
+    }
+    return Pair(biggestLoop?.first ?: 0, path)
   }
 
   private fun findStart(): Point =
@@ -42,47 +64,57 @@ data class Graph(val pipes: List<List<Char>>) {
           }
           .first()
 
-  private fun findConnecting(p: Point): List<Point> {
-    val points = mutableListOf<Point>()
-    when (val pipe = pipes.getOrNull(p.y)?.getOrNull(p.x - 1)) {
-      null -> {}
-      else ->
-          when (pipe) {
-            '-',
-            'L',
-            'F' -> points.add(Point(p.x - 1, p.y))
-            else -> {}
-          }
+  private fun findConnecting(ap: AdjacentPoint): List<AdjacentPoint> {
+    val p = ap.p
+    val tile = pipes.get(p.y).get(p.x)
+    val points = mutableListOf<AdjacentPoint>()
+    if (tile in listOf('S', '-', 'J', '7')) {
+      when (val pipe = pipes.getOrNull(p.y)?.getOrNull(p.x - 1)) {
+        null -> {}
+        else ->
+            when (pipe) {
+              '-',
+              'L',
+              'F' -> points.add(AdjacentPoint(ap, Point(p.x - 1, p.y)))
+              else -> {}
+            }
+      }
     }
-    when (val pipe = pipes.getOrNull(p.y)?.getOrNull(p.x + 1)) {
-      null -> {}
-      else ->
-          when (pipe) {
-            '-',
-            'J',
-            '7' -> points.add(Point(p.x + 1, p.y))
-            else -> {}
-          }
+    if (tile in listOf('S', '-', 'F', 'L')) {
+      when (val pipe = pipes.getOrNull(p.y)?.getOrNull(p.x + 1)) {
+        null -> {}
+        else ->
+            when (pipe) {
+              '-',
+              'J',
+              '7' -> points.add(AdjacentPoint(ap, Point(p.x + 1, p.y)))
+              else -> {}
+            }
+      }
     }
-    when (val pipe = pipes.getOrNull(p.y - 1)?.getOrNull(p.x)) {
-      null -> {}
-      else ->
-          when (pipe) {
-            '|',
-            'F',
-            '7' -> points.add(Point(p.x, p.y - 1))
-            else -> {}
-          }
+    if (tile in listOf('S', '|', 'J', 'L')) {
+      when (val pipe = pipes.getOrNull(p.y - 1)?.getOrNull(p.x)) {
+        null -> {}
+        else ->
+            when (pipe) {
+              '|',
+              'F',
+              '7' -> points.add(AdjacentPoint(ap, Point(p.x, p.y - 1)))
+              else -> {}
+            }
+      }
     }
-    when (val pipe = pipes.getOrNull(p.y + 1)?.getOrNull(p.x)) {
-      null -> {}
-      else ->
-          when (pipe) {
-            '|',
-            'J',
-            'L' -> points.add(Point(p.x, p.y + 1))
-            else -> {}
-          }
+    if (tile in listOf('S', '|', '7', 'F')) {
+      when (val pipe = pipes.getOrNull(p.y + 1)?.getOrNull(p.x)) {
+        null -> {}
+        else ->
+            when (pipe) {
+              '|',
+              'J',
+              'L' -> points.add(AdjacentPoint(ap, Point(p.x, p.y + 1)))
+              else -> {}
+            }
+      }
     }
 
     return points
@@ -92,7 +124,72 @@ data class Graph(val pipes: List<List<Char>>) {
 fun main() {
   fun part1(input: Graph): Long = input.findLongest()
 
-  fun part2(input: Graph): Long = 1
+  fun part2(input: Graph): Long {
+    val path = input.findLongestPath().second
+    var containCount = 0L
+    for (y in input.pipes.indices) {
+      var contained = false
+      var lastBend: Char? = null
+
+      for (x in input.pipes.get(y).indices) {
+        if (Point(x, y) in path) {
+          // Vertical crossings should partition into enclosed ranges. TODO: Look
+          // for a real algorithm? Maybe something like flood fill?
+          var tile = input.pipes.get(y).get(x)
+          // For simpliciy find the "shape" of the start connection.
+          if (tile == 'S') {
+            var first = path.get(1)
+            var last = path.last()
+            if (first.x > last.x) {
+              first = last.also { last = first }
+            }
+            tile =
+                when (Pair(last.x - first.x, last.y - first.y)) {
+                  // Remember that y is top-to-bottom.
+                  Pair(0, 2),
+                  Pair(0, -2) -> '|'
+                  Pair(2, 0),
+                  Pair(-2, 0) -> '-'
+                  // SL vs  L
+                  // F     FS
+                  Pair(1, -1) -> if (first.x == x) 'F' else 'J'
+                  // F  vs FS
+                  // SL     L
+                  Pair(1, 1) -> if (first.x == x) 'L' else '7'
+                  else -> throw IllegalStateException("Bad start data")
+                }
+          }
+          val cut =
+              when (tile) {
+                'L' -> {
+                  lastBend = tile
+                  false
+                }
+                '7' -> lastBend == 'L'
+                'F' -> {
+                  lastBend = tile
+                  false
+                }
+                'J' -> lastBend == 'F'
+                '|' -> true
+                else -> false
+              }
+          if (cut) {
+            contained = !contained
+          }
+          print(tile)
+        } else if (contained) {
+          containCount++
+          print('I')
+        } else {
+          print('.')
+        }
+      }
+      println("")
+    }
+
+    return containCount
+  }
 
   val test1Str =
       """
@@ -150,10 +247,10 @@ fun main() {
   ..........
   .S------7.
   .|F----7|.
-  .||OOOO||.
-  .||OOOO||.
+  .||....||.
+  .||....||.
   .|L-7F-J|.
-  .|II||II|.
+  .|..||..|.
   .L--JL--J.
   ..........
   """
