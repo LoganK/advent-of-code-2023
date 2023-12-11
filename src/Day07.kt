@@ -42,45 +42,16 @@ data class Hand(val cards: List<Char>, val jokers: Boolean = false) : Comparable
     // 50 - Five of a kind
     val max = m.values.maxOrNull() ?: 0
     val jokers = cards.filter { it == 'J' }.count()
-    return when (max) {
-      0 -> 50 // All Jokers
-      1 ->
-          when (jokers) {
-            0 -> 10
-            1 -> 20
-            2 -> 30
-            3 -> 40
-            4 -> 50
-            else -> throw IllegalArgumentException("Invalid: ${cards}")
-          }
-      2 ->
-          if (m.values.filter { it == 2 }.count() == 2) {
-            if (jokers > 0) 35 else 25
-          } else {
-            when (jokers) {
-              0 -> 20
-              1 -> 30
-              2 -> 40
-              3 -> 50
-              else -> throw IllegalArgumentException("Invalid: ${cards}")
-            }
-          }
-      3 ->
-          when (jokers) {
-            0 -> if (2 in m.values) 35 else 30
-            1 -> 40
-            2 -> 50
-            else -> throw IllegalArgumentException("Invalid: ${cards}")
-          }
-      4 ->
-          when (jokers) {
-            0 -> 40
-            1 -> 50
-            else -> throw IllegalArgumentException("Invalid: ${cards}")
-          }
-      5 -> 50
-      else -> throw IllegalArgumentException("Invalid: ${cards}")
-    }
+    return jokers * 10 +
+        when (max) {
+          0 -> 0
+          1 -> 10
+          2 -> 20 + if (m.values.filter { it == 2 }.count() == 2) 5 else 0
+          3 -> 30 + if (2 in m.values) 5 else 0
+          4 -> 40
+          5 -> 50
+          else -> throw IllegalArgumentException("Invalid: ${cards}")
+        }
   }
 
   fun compareTo2(other: Hand): Int {
