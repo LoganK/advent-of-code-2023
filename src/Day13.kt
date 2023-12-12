@@ -1,78 +1,43 @@
 import java.io.File
-import java.math.BigInteger
 
-fun <T> Collection<T>.pairCombinations(): Sequence<Pair<T, T>> = sequence {
-  forEachIndexed { i, a -> drop(i + 1).forEach { b -> yield(Pair(a, b)) } }
-}
-
-data class Room(val rows: Map<String, List<Int>>, val cols: Map<String, List<Int>>) {
+data class Room(val rows: List<String>, val cols: List<String>) {
   companion object {
+    fun String.smudgeDistance(other: String): Int =
+        this.zip(other).filter { it.first != it.second }.count()
+
     fun parseRoom(input: List<String>): Room {
-      // We use a String->Index map to make it easy to find similar strings.
-      val rows = input.withIndex().groupBy({ it.value }, { it.index }).toMap()
       val cols =
-          input
-              .flatMap(String::withIndex)
-              .groupBy({ it.index }, { it.value })
-              .map { it.value.joinToString(separator = "") to it.key }
-              .groupBy({ it.first }, { it.second })
-              .toMap()
-      return Room(rows, cols)
+          input.flatMap(String::withIndex).groupBy({ it.index }, { it.value }).map {
+            it.value.joinToString(separator = "")
+          }
+      return Room(input, cols)
     }
 
     fun fromString(input: String): List<Room> {
       return input.split("\n\n").map { parseRoom(it.lines().filter(String::isNotEmpty)) }
     }
-  }
 
-  fun <T> findSymmetry(input: Map<T, List<Int>>): Int {
-    // Anything where two identical strings are adjacent.
-    val candidates =
-        input.flatMap { entry ->
-          entry.value.zipWithNext().filter { it.first + 1 == it.second }.map { it.first + 1 }
-        }
-    val lastIndex = input.values.map { it.size }.sum() - 1
-    for (n in candidates) {
-      // Zip conveniently drops non-matching columns.
-      if ((n..lastIndex).zip((n - 1 downTo 0)).all { pair ->
-        input.values.any { (listOf(pair.first, pair.second) - it).isEmpty() }
-      }) {
-        return n
-      }
-    }
-
-    return 0
-  }
-
-  fun calcScore(): Long = (findSymmetry(cols) + 100 * findSymmetry(rows)).toLong()
-
-  fun findSmudgeSymmetry(input: Map<String, List<Int>>): Int {
-    // Use bits for convenient XOR.
-    fun String.toRoomNum(): BigInteger =
-        BigInteger(map { if (it == '#') '1' else '0' }.joinToString(separator = ""), 2)
-    fun BigInteger.singleBit(): Boolean = (this and (this - BigInteger.ONE)) == BigInteger.ZERO
-    val newInput = input.map { it.key.toRoomNum() to it.value }.toMap()
-
-    // Anything where almost identical strings are adjacent.
-    val candidateKeys =
-        newInput.keys.pairCombinations().filter { (it.first xor it.second).singleBit() }
-    for (candidate in candidateKeys) {
-      // There could be multiple matches, but we can swap only one candidate.
-      for (index in newInput[candidate.second]!!) {
-        var remap = newInput.toMutableMap()
-        remap[candidate.second] = remap[candidate.second]!!.minusElement(index)
-        remap[candidate.first] = remap[candidate.first]!!.plusElement(index)
-        val n = findSymmetry(remap)
-        if (n > 0) {
-          return n
+    fun findSymmetry(input: List<String>, smudgeCount: Int): Long {
+      // Just scan everything.
+      for (n in 1..input.size - 1) {
+        // Zip conveniently drops non-matching columns.
+        val totalDistance =
+            (n ..< input.size)
+                .zip(n - 1 downTo 0)
+                .map { input[it.first].smudgeDistance(input[it.second]) }
+                .sum()
+        if (totalDistance == smudgeCount) {
+          return n.toLong()
         }
       }
-    }
 
-    return 0
+      return 0L
+    }
   }
 
-  fun calcScore2(): Long = (100 * findSmudgeSymmetry(rows) + findSmudgeSymmetry(cols)).toLong()
+  fun calcScore(): Long = findSymmetry(cols, 0) + 100L * findSymmetry(rows, 0)
+
+  fun calcScore2(): Long = findSymmetry(cols, 1) + 100L * findSymmetry(rows, 1)
 }
 
 fun main() {
