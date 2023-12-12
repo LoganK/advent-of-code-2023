@@ -1,7 +1,10 @@
 import java.io.File
 import kotlin.math.abs
 
-data class Point(val x: Long, val y: Long)
+data class Point(val x: Long, val y: Long) {
+  fun distance(other: Point): Long =
+    abs(x - other.x) + abs(y - other.y)
+}
 
 fun <T> List<T>.pairCombinations(): Sequence<Pair<T, T>> = sequence {
   forEachIndexed { i, a -> drop(i + 1).forEach { b -> yield(Pair(a, b)) } }
@@ -43,7 +46,7 @@ data class Galaxy(val points: List<Point>) {
 
   fun distances(): Sequence<Long> = sequence {
     points.pairCombinations().forEach {
-      yield((abs(it.first.x - it.second.x) + abs(it.first.y - it.second.y)).toLong())
+      yield(it.first.distance(it.second))
     }
   }
 }
