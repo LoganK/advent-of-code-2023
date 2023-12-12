@@ -13,29 +13,19 @@ data class Dish(val room: List<String>) {
             }
           })
 
-  fun tiltWest(): Dish =
+  private fun tiltWest(reverse: Boolean = false): Dish =
       Dish(
           room.map {
             val byFixedRocks = it.split('#')
             val tilt =
                 byFixedRocks.map {
                   // For each fixed rock, pull all the moving rock to the left.
-                  it.partition { it == 'O' }.run { first + second }
+                  it.partition { (it == 'O') != reverse }.run { first + second }
                 }
             tilt.joinToString(separator = "#")
           })
 
-  fun tiltEast(): Dish =
-      Dish(
-          room.map {
-            val byFixedRocks = it.split('#')
-            val tilt =
-                byFixedRocks.map {
-                  // For each fixed rock, pull all the moving rock to the right.
-                  it.partition { it != 'O' }.run { first + second }
-                }
-            tilt.joinToString(separator = "#")
-          })
+  private fun tiltEast(): Dish = tiltWest(true)
 
   fun tiltSouth(): Dish = rotateLeft(1).tiltEast().rotateLeft(3)
 
