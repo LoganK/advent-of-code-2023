@@ -1,91 +1,50 @@
 import java.io.File
 
-data class Dish(val room: MutableList<MutableList<Char>>) {
+data class Dish(val room: List<String>) {
   companion object {
-    fun fromString(input: List<String>): Dish =
-        Dish(input.map { it.toMutableList() }.toMutableList())
+    fun fromString(input: List<String>): Dish = Dish(input)
   }
 
-  fun tiltNorth() {
-    for (y in room.indices) {
-      val prevRow = room.getOrNull(y - 1)
-      val row = room[y]
-      for (x in row.indices) {
-        if (prevRow?.get(x) == '.' && row[x] == 'O') {
-          for (shiftY in (y - 1 downTo 0)) {
-            if (room[shiftY][x] == '.') {
-              room[shiftY][x] = 'O'
-              room[shiftY + 1][x] = '.'
+  private fun rotateLeft(count: Int): Dish =
+      Dish(
+          (1..count).fold(room) { it, _ ->
+            it.flatMap(String::withIndex).groupBy({ it.index }, { it.value }).map {
+              it.value.joinToString(separator = "")
             }
-            if (room[shiftY][x] == '#') {
-              break
-            }
-          }
-        }
-      }
-    }
-  }
+          })
 
-  fun tiltSouth() {
-    for (y in room.indices.reversed()) {
-      for (x in room[y].indices) {
-        if (room.getOrNull(y + 1)?.get(x) == '.' && room[y][x] == 'O') {
-          for (shiftY in (y + 1..room.lastIndex)) {
-            if (room[shiftY][x] == '.') {
-              room[shiftY][x] = 'O'
-              room[shiftY - 1][x] = '.'
-            }
-            if (room[shiftY][x] == '#') {
-              break
-            }
-          }
-        }
-      }
-    }
-  }
+  fun tiltWest(): Dish =
+      Dish(
+          room.map {
+            val byFixedRocks = it.split('#')
+            val tilt =
+                byFixedRocks.map {
+                  // For each fixed rock, pull all the moving rock to the left.
+                  it.partition { it == 'O' }.run { first + second }
+                }
+            tilt.joinToString(separator = "#")
+          })
 
-  fun tiltWest() {
-    for (x in room[0].indices) {
-      for (y in room.indices) {
-        if (room.get(y).getOrNull(x - 1) == '.' && room[y][x] == 'O') {
-          for (shiftX in (x - 1 downTo 0)) {
-            if (room[y][shiftX] == '.') {
-              room[y][shiftX] = 'O'
-              room[y][shiftX + 1] = '.'
-            }
-            if (room[y][shiftX] == '#') {
-              break
-            }
-          }
-        }
-      }
-    }
-  }
+  fun tiltEast(): Dish =
+      Dish(
+          room.map {
+            val byFixedRocks = it.split('#')
+            val tilt =
+                byFixedRocks.map {
+                  // For each fixed rock, pull all the moving rock to the right.
+                  it.partition { it != 'O' }.run { first + second }
+                }
+            tilt.joinToString(separator = "#")
+          })
 
-  fun tiltEast() {
-    for (x in room[0].indices.reversed()) {
-      for (y in room.indices) {
-        if (room.get(y).getOrNull(x + 1) == '.' && room[y][x] == 'O') {
-          for (shiftX in (x + 1..room[y].lastIndex)) {
-            if (room[y][shiftX] == '.') {
-              room[y][shiftX] = 'O'
-              room[y][shiftX - 1] = '.'
-            }
-            if (room[y][shiftX] == '#') {
-              break
-            }
-          }
-        }
-      }
-    }
-  }
+  fun tiltSouth(): Dish = rotateLeft(1).tiltEast().rotateLeft(3)
 
-  fun score(): Long {
-    val height = room.size
-    return room.mapIndexed { i, row -> row.count { it == 'O' } * (height - i) }.sum().toLong()
-  }
+  fun tiltNorth(): Dish = rotateLeft(1).tiltWest().rotateLeft(3)
 
-  fun copy(): Dish = Dish(room.map { it.toMutableList() }.toMutableList())
+  fun spin(): Dish = tiltNorth().tiltWest().tiltSouth().tiltEast()
+
+  fun score(): Long =
+      room.mapIndexed { i, row -> row.count { it == 'O' } * (room.size - i) }.sum().toLong()
 
   override fun toString(): String {
     val sb = StringBuilder()
@@ -101,29 +60,22 @@ data class Dish(val room: MutableList<MutableList<Char>>) {
 }
 
 fun main() {
-  fun part1(input: Dish): Long {
-    val dish = input.copy()
-    dish.tiltNorth()
-    return dish.score()
-  }
+  fun part1(input: Dish): Long = input.tiltNorth().score()
 
   fun part2(input: Dish): Long {
-    val dish = input.copy()
-    val cache = mutableMapOf<String, Int>()
+    // Look for loops
+    val histIndex = mutableMapOf<String, Int>()
+
+    var dish = input
     var i = 0
     val limit = 1000000000
     while (i < limit) {
-      val str = dish.toString()
-      val loop = cache.getOrDefault(str, null)
-      if (loop != null) {
+      val loop = histIndex.getOrPut(dish.toString(), { i })
+      if (loop != i) {
         i += (i - loop) * ((limit - i - 1) / (i - loop))
-      } else {
-        cache[str] = i
       }
-      dish.tiltNorth()
-      dish.tiltWest()
-      dish.tiltSouth()
-      dish.tiltEast()
+
+      dish = dish.spin()
       i += 1
     }
     return dish.score()
