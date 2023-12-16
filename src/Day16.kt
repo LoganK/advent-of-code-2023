@@ -4,7 +4,7 @@ import java.io.File
 
 data class Point(val x: Int, val y: Int)
 
-data class Beam(val p: Point, var dir: Dir) {
+data class Beam(val p: Point, val dir: Dir) {
   enum class Dir {
     U,
     R,
@@ -26,18 +26,18 @@ typealias Dir = Beam.Dir
 data class Tile(val c: Char, val beams: MutableSet<Beam> = mutableSetOf())
 
 data class Room(
-    val layout: List<List<Tile>>,
-    var beams: MutableList<Beam> = mutableListOf(Beam(Point(-1, 0), Beam.Dir.R))
+    val layout: List<List<Char>>
 ) {
   companion object {
-    fun fromString(input: List<String>): Room = Room(input.map { it.toList().map { Tile(it) } })
+    fun fromString(input: List<String>): Room = Room(input.map { it.toList() })
   }
 
-  fun tick(): Unit {
+  // Modifies beams and tiles
+  private fun tick(beams: MutableList<Beam>, tiles: List<List<Tile>>): Unit {
     val newBeams = mutableListOf<Beam>()
     for (b in beams) {
       val p = b.next()
-      val t = layout.getOrNull(p.y)?.getOrNull(p.x)
+      val t = tiles.getOrNull(p.y)?.getOrNull(p.x)
 
       // Keep the full history to avoid loops.
       if (t != null && t.beams.add(b)) {
@@ -79,24 +79,23 @@ data class Room(
       }
     }
 
-    beams = newBeams
+    beams.clear()
+    beams.addAll(newBeams)
   }
 
-  fun run(): Room {
-    // Cheesy bad code: reset the map between runs.
-    layout.forEach { it.forEach { it.beams.clear() } }
+  fun run(beams: MutableList<Beam>): Long {
+    val tiles = layout.map { it.map { Tile(it) } }
     while (beams.size > 0) {
-      tick()
+      tick(beams, tiles)
     }
-    return this
+    return tiles
+      .map { row -> row.filter { it.beams.isNotEmpty() }.count() }
+      .sum().toLong()
   }
-
-  fun energy(): Long =
-      layout.map { row -> row.filter { it.beams.isNotEmpty() }.count() }.sum().toLong()
 }
 
 fun main() {
-  fun part1(input: Room): Long = input.run().energy()
+  fun part1(input: Room): Long = input.run(mutableListOf(Beam(Point(-1, 0), Dir.R)))
 
   fun part2(input: Room): Long {
     val lastCol = input.layout[0].lastIndex
@@ -106,7 +105,7 @@ fun main() {
             (0..lastCol).map { Beam(Point(it, -1), Dir.D) } +
             (0..lastCol).map { Beam(Point(it, input.layout.lastIndex + 1), Dir.D) }
 
-    return starts.map { input.copy(beams = mutableListOf(it)).run().energy() }.max()
+    return starts.map { input.run(mutableListOf(it)) }.max()
   }
 
   val testStr =
