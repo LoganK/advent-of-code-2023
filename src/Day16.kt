@@ -39,7 +39,7 @@ data class Room(
       val p = b.next()
       val t = layout.getOrNull(p.y)?.getOrNull(p.x)
 
-      // Keep the history to avoid loops.
+      // Keep the full history to avoid loops.
       if (t != null && t.beams.add(b)) {
         when (t.c) {
           '.' -> newBeams.add(b.copy(p = p))
@@ -100,42 +100,13 @@ fun main() {
 
   fun part2(input: Room): Long {
     val lastCol = input.layout[0].lastIndex
-    var max =
-        input.layout.indices
-            .map { input.copy(beams = mutableListOf(Beam(Point(-1, it), Dir.R))).run().energy() }
-            .max()
-    max =
-        maxOf(
-            max,
-            input.layout.indices
-                .map {
-                  input
-                      .copy(beams = mutableListOf(Beam(Point(lastCol + 1, it), Dir.L)))
-                      .run()
-                      .energy()
-                }
-                .max())
-    max =
-        maxOf(
-            max,
-            (0..lastCol)
-                .map {
-                  input.copy(beams = mutableListOf(Beam(Point(it, -1), Dir.D))).run().energy()
-                }
-                .max())
-    max =
-        maxOf(
-            max,
-            (0..lastCol)
-                .map {
-                  input
-                      .copy(
-                          beams = mutableListOf(Beam(Point(it, input.layout.lastIndex + 1), Dir.U)))
-                      .run()
-                      .energy()
-                }
-                .max())
-    return max
+    val starts =
+        input.layout.indices.map { Beam(Point(-1, it), Dir.R) } +
+            input.layout.indices.map { Beam(Point(lastCol + 1, it), Dir.L) } +
+            (0..lastCol).map { Beam(Point(it, -1), Dir.D) } +
+            (0..lastCol).map { Beam(Point(it, input.layout.lastIndex + 1), Dir.D) }
+
+    return starts.map { input.copy(beams = mutableListOf(it)).run().energy() }.max()
   }
 
   val testStr =
