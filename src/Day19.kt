@@ -45,26 +45,27 @@ data class Rule(val field: String?, val op: Char?, val limit: Int?, val next: St
   // Returns a workflow name, the PartCat to apply to that workflow, and the
   // PartCat that passes through evaluation.
   fun eval(m: PartCat): Triple<String?, PartCat?, PartCat?> =
-      when (op) {
-        '<' -> {
-          val s = m.scores
-          val oldRange = s.get(field)!!
-          val newRange = (oldRange.start..minOf(oldRange.endInclusive, limit!! - 1))
-          val nextCat = if (newRange.isEmpty()) null else PartCat(s.plus(field!! to newRange))
-          val remRange = (limit!!..oldRange.endInclusive)
-          val remCat = if (remRange.isEmpty()) null else PartCat(s.plus(field!! to remRange))
-          if (nextCat != null) Triple(next, nextCat, remCat) else Triple(null, null, m)
-        }
-        '>' -> {
-          val s = m.scores
-          val oldRange = s.get(field)!!
-          val newRange = (maxOf(oldRange.start, limit!! + 1)..oldRange.endInclusive)
-          val nextCat = if (newRange.isEmpty()) null else PartCat(s.plus(field!! to newRange))
-          val remRange = (oldRange.start..limit!!)
-          val remCat = if (remRange.isEmpty()) null else PartCat(s.plus(field!! to remRange))
-          if (nextCat != null) Triple(next, nextCat, remCat) else Triple(null, null, m)
-        }
-        else -> Triple(next, m, null)
+      if (op == null) {
+        Triple(next, m, null)
+      } else {
+        val s = m.scores
+        val oldRange = s.get(field)!!
+        val (nextRange, remRange) =
+            when (op) {
+              '<' ->
+                  Pair(
+                      (oldRange.start..minOf(oldRange.endInclusive, limit!! - 1)),
+                      (limit..oldRange.endInclusive))
+              '>' ->
+                  Pair(
+                      (maxOf(oldRange.start, limit!! + 1)..oldRange.endInclusive),
+                      (oldRange.start..limit))
+              else -> throw IllegalStateException("unknown op ${op}")
+            }
+
+        val nextCat = if (nextRange.isEmpty()) null else PartCat(s.plus(field!! to nextRange))
+        val remCat = if (remRange.isEmpty()) null else PartCat(s.plus(field!! to remRange))
+        if (nextCat != null) Triple(next, nextCat, remCat) else Triple(null, null, m)
       }
 }
 

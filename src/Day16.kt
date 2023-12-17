@@ -25,9 +25,7 @@ typealias Dir = Beam.Dir
 
 data class Tile(val c: Char, val beams: MutableSet<Beam> = mutableSetOf())
 
-data class Room(
-    val layout: List<List<Char>>
-) {
+data class Room(val layout: List<List<Char>>) {
   companion object {
     fun fromString(input: List<String>): Room = Room(input.map { it.toList() })
   }
@@ -88,9 +86,7 @@ data class Room(
     while (beams.size > 0) {
       tick(beams, tiles)
     }
-    return tiles
-      .map { row -> row.filter { it.beams.isNotEmpty() }.count() }
-      .sum().toLong()
+    return tiles.map { row -> row.filter { it.beams.isNotEmpty() }.count() }.sum().toLong()
   }
 }
 

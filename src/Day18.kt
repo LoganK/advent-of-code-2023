@@ -75,11 +75,11 @@ data class Trench(val edges: List<Edge>) {
   }
 
   fun volume(): Long {
-    val ys = edges.map { it.src.y }
-    val yRange = ys.min()..ys.max()
+    val ys = edges.map { it.dst.y }
 
+    var lastY = ys[0] - 1
     var totalVol = 0L
-    for (y in yRange) {
+    for (y in ys) {
       val inRow = edges.filter { y in it.yRange() }.sortedBy { minOf(it.src.x, it.dst.x) }
 
       var rowTotal = 0L
@@ -142,7 +142,8 @@ data class Trench(val edges: List<Edge>) {
         }
       }
 
-      totalVol += rowTotal
+      totalVol += rowTotal * (lastY - y)
+      lastY = y
     }
 
     return totalVol.toLong()
@@ -218,27 +219,6 @@ data class Trench(val edges: List<Edge>) {
     }
     return sb.toString()
   }
-
-  fun toStringCorners(): String {
-    val sb = StringBuilder()
-    val xs = edges.map { it.src.x }
-    val xRange = xs.min()..xs.max()
-    val ys = edges.map { it.src.y }
-    val yRange = ys.min()..ys.max()
-    for (y in yRange) {
-      val inRow = edges.filter { y in it.yRange() }.sortedBy { minOf(it.src.x, it.dst.x) }
-      val corners = inRow.map { it.src }.toSet()
-      for (x in xRange) {
-        if (Point(x, y) in corners || (x == 0 && y == 0)) {
-          sb.append('#')
-        } else {
-          sb.append('.')
-        }
-      }
-      sb.append('\n')
-    }
-    return sb.toString()
-  }
 }
 
 fun main() {
@@ -270,9 +250,6 @@ fun main() {
   val test = Trench.fromString(testStr)
   val input = Trench.fromString(inputStr)
 
-  // println(test)
-  // println("\n")
-  // println(input.toStringFilled())
   println(part1(test))
   println(part1(input))
 

@@ -1,15 +1,19 @@
 import java.io.File
+import java.math.BigInteger
 
 data class Room(val rows: List<String>, val cols: List<String>) {
   companion object {
     fun String.smudgeDistance(other: String): Int =
-        this.zip(other).filter { it.first != it.second }.count()
+      this.zip(other)
+        .filter { it.first != it.second }
+        .count()
 
     fun parseRoom(input: List<String>): Room {
       val cols =
-          input.flatMap(String::withIndex).groupBy({ it.index }, { it.value }).map {
-            it.value.joinToString(separator = "")
-          }
+          input
+              .flatMap(String::withIndex)
+              .groupBy({ it.index }, { it.value })
+              .map { it.value.joinToString(separator = "") }
       return Room(input, cols)
     }
 
@@ -21,11 +25,9 @@ data class Room(val rows: List<String>, val cols: List<String>) {
       // Just scan everything.
       for (n in 1..input.size - 1) {
         // Zip conveniently drops non-matching columns.
-        val totalDistance =
-            (n ..< input.size)
-                .zip(n - 1 downTo 0)
-                .map { input[it.first].smudgeDistance(input[it.second]) }
-                .sum()
+        val totalDistance = (n..<input.size).zip(n - 1 downTo 0)
+          .map { input[it.first].smudgeDistance(input[it.second]) }
+          .sum()
         if (totalDistance == smudgeCount) {
           return n.toLong()
         }
@@ -36,7 +38,6 @@ data class Room(val rows: List<String>, val cols: List<String>) {
   }
 
   fun calcScore(): Long = findSymmetry(cols, 0) + 100L * findSymmetry(rows, 0)
-
   fun calcScore2(): Long = findSymmetry(cols, 1) + 100L * findSymmetry(rows, 1)
 }
 
